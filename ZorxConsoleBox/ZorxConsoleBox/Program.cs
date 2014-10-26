@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Threading;
 using System.Windows.Forms;
 using System.Runtime.InteropServices;
 
@@ -10,12 +11,41 @@ class ZorxConsoleBox
     private static LowLevelKeyboardProc _proc = HookCallback;
     private static IntPtr _hookID = IntPtr.Zero;
 
+    private static Process[] pidList = null;
+    private static Process fallbackWindow = null;
+
     public static void Main()
     {
+        pidList = initMinionApps();
+        fallbackWindow = Process.GetProcessesByName("ZorxConsoleBox.vshost")[0];
+        SetForegroundWindow(fallbackWindow.MainWindowHandle);
+
         _hookID = SetHook(_proc);
-        Application.Run();
+        Application.Run();        
         UnhookWindowsHookEx(_hookID);
+
     }
+
+    private static Process[] initMinionApps()
+    {
+        // Populate list containing Processes we want to inject keys into.
+        Process[] wowList = Process.GetProcessesByName("notepad");
+        foreach (Process item in wowList)
+        {
+            Console.WriteLine(item.Id);
+        }
+        return wowList;
+    }
+
+    private static void sendKeyToProcess(Keys key, Process p)
+    {
+        IntPtr recvHandle = p.MainWindowHandle;
+        SetForegroundWindow(recvHandle);
+        SendKeys.SendWait(key.ToString());
+        SetForegroundWindow(fallbackWindow.MainWindowHandle);
+    }
+
+
 
     private static IntPtr SetHook(LowLevelKeyboardProc proc)
     {
@@ -36,10 +66,25 @@ class ZorxConsoleBox
         if (nCode >= 0 && wParam == (IntPtr)WM_KEYDOWN)
         {
             int vkCode = Marshal.ReadInt32(lParam);
+            foreach (Process item in pidList)
+            {
+                sendKeyToProcess((Keys)vkCode, item);
+                Thread.Sleep(5);
+                
+            }
             Console.WriteLine((Keys)vkCode);
         }
         return CallNextHookEx(_hookID, nCode, wParam, lParam);
     }
+
+    //[DllImport("user32.dll", CharSet = CharSet.Auto, ExactSpelling = true)]
+    //private static extern IntPtr SendMessage(IntPtr hWnd, int Msg, IntPtr wParam, IntPtr lParam);
+
+    [DllImport("User32.dll")]
+    static extern int SetForegroundWindow(IntPtr point);
+
+    [DllImport("user32.dll", CharSet = CharSet.Auto, ExactSpelling = true)]
+    public static extern IntPtr GetForegroundWindow();
 
     [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
     private static extern IntPtr SetWindowsHookEx(int idHook,
