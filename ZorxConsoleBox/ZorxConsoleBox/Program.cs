@@ -4,6 +4,13 @@ using System.Threading;
 using System.Windows.Forms;
 using System.Runtime.InteropServices;
 
+/* TODO:
+ * Add "Disable all but one" feature
+ * Add pause feature
+ * Add stop feature
+ * Add detect new clients feature
+ */
+
 class ZorxConsoleBox
 {
     private const int WH_KEYBOARD_LL = 13;
@@ -19,7 +26,7 @@ class ZorxConsoleBox
         pidList = initMinionApps();
 
         _hookID = SetHook(_proc);
-        Application.Run();        
+        Application.Run();
         UnhookWindowsHookEx(_hookID);
 
     }
@@ -37,6 +44,7 @@ class ZorxConsoleBox
 
     private static void sendKeyToProcess(Keys key, Process p,IntPtr flagthing)
     {
+        // Sends key to p. flagthing is for example WM_KEYUP
         IntPtr recvHandle = p.MainWindowHandle;
         SendMessage(recvHandle, (int)flagthing, (int)key, IntPtr.Zero);
     }
@@ -67,7 +75,6 @@ class ZorxConsoleBox
             foreach (Process item in pidList)
             {
                 sendKeyToProcess((Keys)vkCode, item, wParam);
-                
             }
             Console.WriteLine((Keys)vkCode);
         }
