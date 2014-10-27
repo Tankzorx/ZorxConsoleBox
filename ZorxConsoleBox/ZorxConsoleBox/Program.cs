@@ -8,17 +8,15 @@ class ZorxConsoleBox
 {
     private const int WH_KEYBOARD_LL = 13;
     private const int WM_KEYDOWN = 0x0100;
+    private const int WM_KEYUP = 0x0101;
     private static LowLevelKeyboardProc _proc = HookCallback;
     private static IntPtr _hookID = IntPtr.Zero;
 
     private static Process[] pidList = null;
-    private static Process fallbackWindow = null;
 
     public static void Main()
     {
         pidList = initMinionApps();
-        fallbackWindow = Process.GetProcessesByName("ZorxConsoleBox.vshost")[0];
-        SetForegroundWindow(fallbackWindow.MainWindowHandle);
 
         _hookID = SetHook(_proc);
         Application.Run();        
@@ -29,7 +27,7 @@ class ZorxConsoleBox
     private static Process[] initMinionApps()
     {
         // Populate list containing Processes we want to inject keys into.
-        Process[] wowList = Process.GetProcessesByName("notepad");
+        Process[] wowList = Process.GetProcessesByName("wow");
         foreach (Process item in wowList)
         {
             Console.WriteLine(item.Id);
@@ -37,12 +35,10 @@ class ZorxConsoleBox
         return wowList;
     }
 
-    private static void sendKeyToProcess(Keys key, Process p)
+    private static void sendKeyToProcess(Keys key, Process p,IntPtr flagthing)
     {
         IntPtr recvHandle = p.MainWindowHandle;
-        SetForegroundWindow(recvHandle);
-        SendKeys.SendWait(key.ToString());
-        SetForegroundWindow(fallbackWindow.MainWindowHandle);
+        SendMessage(recvHandle, (int)flagthing, (int)key, IntPtr.Zero);
     }
 
 
@@ -63,13 +59,14 @@ class ZorxConsoleBox
     private static IntPtr HookCallback(
         int nCode, IntPtr wParam, IntPtr lParam)
     {
-        if (nCode >= 0 && wParam == (IntPtr)WM_KEYDOWN)
+        // This was here before:&& wParam == (IntPtr)WM_KEYDOWN
+        // But we want to check for keyups as well.
+        if (nCode >= 0)
         {
             int vkCode = Marshal.ReadInt32(lParam);
             foreach (Process item in pidList)
             {
-                sendKeyToProcess((Keys)vkCode, item);
-                Thread.Sleep(5);
+                sendKeyToProcess((Keys)vkCode, item, wParam);
                 
             }
             Console.WriteLine((Keys)vkCode);
@@ -79,13 +76,6 @@ class ZorxConsoleBox
 
     //[DllImport("user32.dll", CharSet = CharSet.Auto, ExactSpelling = true)]
     //private static extern IntPtr SendMessage(IntPtr hWnd, int Msg, IntPtr wParam, IntPtr lParam);
-
-    [DllImport("User32.dll")]
-    static extern int SetForegroundWindow(IntPtr point);
-
-    [DllImport("user32.dll", CharSet = CharSet.Auto, ExactSpelling = true)]
-    public static extern IntPtr GetForegroundWindow();
-
     [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
     private static extern IntPtr SetWindowsHookEx(int idHook,
         LowLevelKeyboardProc lpfn, IntPtr hMod, uint dwThreadId);
@@ -100,4 +90,7 @@ class ZorxConsoleBox
 
     [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
     private static extern IntPtr GetModuleHandle(string lpModuleName);
+
+    [DllImport("user32.dll")]
+    static extern int SendMessage(IntPtr thWnd, int msg, int wParam, IntPtr lParam);
 }
