@@ -14,11 +14,11 @@ using System.Runtime.InteropServices;
 class ZorxConsoleBox
 {
     private const int WH_KEYBOARD_LL = 13;
-    private const int WH_MOUSE = 7;
+    private const int WH_MOUSE = 14;
     private const int WM_KEYDOWN = 0x0100;
     private const int WM_KEYUP = 0x0101;
     private static LowLevelKeyboardProc _proc = HookCallback;
-    private static LowLevelMouseProc _Mouseproc = MouseHookCallback;
+    private static MouseProc _Mouseproc = MouseHookCallback;
     private static IntPtr _hookID = IntPtr.Zero;
     private static IntPtr _mouseHookID = IntPtr.Zero;
 
@@ -26,12 +26,9 @@ class ZorxConsoleBox
 
     public static void Main()
     {
-        Console.WriteLine("1");
         pidList = initMinionApps();
-        Console.WriteLine("2");
         _hookID = SetHook(_proc);
         _mouseHookID = SetMouseHook(_Mouseproc);
-        Console.WriteLine("3");
         Application.Run();
         UnhookWindowsHookEx(_hookID);
         UnhookWindowsHookEx(_mouseHookID);
@@ -68,26 +65,31 @@ class ZorxConsoleBox
         }
     }
 
-    private static IntPtr SetMouseHook(LowLevelMouseProc proc)
+    private static IntPtr SetMouseHook(MouseProc proc)
     {
         using (Process curProcess = Process.GetCurrentProcess())
         using (ProcessModule curModule = curProcess.MainModule)
         {
+            Console.WriteLine("Hooked up");
             return SetWindowsHookEx(WH_MOUSE, proc,
                 GetModuleHandle(curModule.ModuleName), 0);
         }
     }
 
-    private delegate IntPtr LowLevelMouseProc(int nCode, IntPtr wParam, IntPtr lParam);
+    private static IntPtr MouseHookCallback(int nCode, IntPtr wParam, IntPtr lParam)
+    {
+        if (nCode >= 0)
+        {
+            // Do stuff
+            Console.WriteLine("e");
+        }
+        return CallNextHookEx(_mouseHookID, nCode, wParam, lParam);
+    }
+
+    private delegate IntPtr MouseProc(int nCode, IntPtr wParam, IntPtr lParam);
 
     private delegate IntPtr LowLevelKeyboardProc(int nCode, IntPtr wParam, IntPtr lParam);
 
-    private static IntPtr MouseHookCallback(int nCode, IntPtr wParam, IntPtr lParam)
-    {
-        Console.WriteLine("Was here");
-        Console.WriteLine(nCode);
-        return CallNextHookEx(_mouseHookID, nCode, wParam, lParam);
-    }
 
 
     private static IntPtr HookCallback(
@@ -115,7 +117,7 @@ class ZorxConsoleBox
 
     [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
     private static extern IntPtr SetWindowsHookEx(int idHook,
-        LowLevelMouseProc lpfn, IntPtr hMod, uint dwThreadId);
+        MouseProc lpfn, IntPtr hMod, uint dwThreadId);
 
     [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
