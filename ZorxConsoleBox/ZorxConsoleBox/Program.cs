@@ -13,14 +13,42 @@ using System.Runtime.InteropServices;
 
 class ZorxConsoleBox
 {
+
+    //Declare the wrapper managed POINT class.
+    [StructLayout(LayoutKind.Sequential)]
+    public class POINT
+    {
+        public int x;
+        public int y;
+    }
+
+    //Declare the wrapper managed MouseHookStruct class.
+    [StructLayout(LayoutKind.Sequential)]
+    public class MouseHookStruct
+    {
+        public POINT pt;
+        public int hwnd;
+        public int wHitTestCode;
+        public int dwExtraInfo;
+    }
     private const int WH_KEYBOARD_LL = 13;
     private const int WH_MOUSE = 14;
     private const int WM_KEYDOWN = 0x0100;
-    private const int WM_KEYUP = 0x0101;
+    
+
+    private const int WM_LBUTTONDOWN = 0x0201;
+    private const int WM_LBUTTONUP = 0x0202;
+    private const int WM_RBUTTONDOWN = 0x0204;
+    private const int WM_RBUTTONUP = 0x0205;
+
+
     private static LowLevelKeyboardProc _proc = HookCallback;
     private static MouseProc _Mouseproc = MouseHookCallback;
     private static IntPtr _hookID = IntPtr.Zero;
     private static IntPtr _mouseHookID = IntPtr.Zero;
+
+    private delegate IntPtr MouseProc(int nCode, IntPtr wParam, IntPtr lParam);
+    private delegate IntPtr LowLevelKeyboardProc(int nCode, IntPtr wParam, IntPtr lParam);
 
     private static Process[] pidList = null;
 
@@ -70,7 +98,6 @@ class ZorxConsoleBox
         using (Process curProcess = Process.GetCurrentProcess())
         using (ProcessModule curModule = curProcess.MainModule)
         {
-            Console.WriteLine("Hooked up");
             return SetWindowsHookEx(WH_MOUSE, proc,
                 GetModuleHandle(curModule.ModuleName), 0);
         }
@@ -80,23 +107,21 @@ class ZorxConsoleBox
     {
         if (nCode >= 0)
         {
-            // Do stuff
-            Console.WriteLine("e");
+            if (WM_LBUTTONDOWN == (int)wParam)
+            {
+                MouseHookStruct MyMouseHookStruct = new MouseHookStruct();
+                Marshal.PtrToStructure(lParam, MyMouseHookStruct);
+                Console.WriteLine(MyMouseHookStruct.pt.x + ", " + MyMouseHookStruct.pt.y);
+        
+            }
+
         }
         return CallNextHookEx(_mouseHookID, nCode, wParam, lParam);
     }
 
-    private delegate IntPtr MouseProc(int nCode, IntPtr wParam, IntPtr lParam);
 
-    private delegate IntPtr LowLevelKeyboardProc(int nCode, IntPtr wParam, IntPtr lParam);
-
-
-
-    private static IntPtr HookCallback(
-        int nCode, IntPtr wParam, IntPtr lParam)
+    private static IntPtr HookCallback(int nCode, IntPtr wParam, IntPtr lParam)
     {
-        // This was here before:&& wParam == (IntPtr)WM_KEYDOWN
-        // But we want to check for keyups as well.
         if (nCode >= 0)
         {
             int vkCode = Marshal.ReadInt32(lParam);
@@ -109,8 +134,6 @@ class ZorxConsoleBox
         return CallNextHookEx(_hookID, nCode, wParam, lParam);
     }
 
-    //[DllImport("user32.dll", CharSet = CharSet.Auto, ExactSpelling = true)]
-    //private static extern IntPtr SendMessage(IntPtr hWnd, int Msg, IntPtr wParam, IntPtr lParam);
     [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
     private static extern IntPtr SetWindowsHookEx(int idHook,
         LowLevelKeyboardProc lpfn, IntPtr hMod, uint dwThreadId);
