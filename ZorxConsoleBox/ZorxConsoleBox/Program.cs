@@ -31,6 +31,18 @@ class ZorxConsoleBox
         public int wHitTestCode;
         public int dwExtraInfo;
     }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct RECT
+    {
+        public int left;
+        public int top;
+        public int right;
+        public int bottom;
+    }
+
+
+
     private const int WH_KEYBOARD_LL = 13;
     private const int WH_MOUSE = 14;
     private const int WM_KEYDOWN = 0x0100;
@@ -109,6 +121,9 @@ class ZorxConsoleBox
         {
             if (WM_LBUTTONDOWN == (int)wParam)
             {
+                RECT myRECT;
+                GetWindowRect(pidList[0].MainWindowHandle,out myRECT);
+                Console.WriteLine(myRECT.left);
                 MouseHookStruct MyMouseHookStruct = new MouseHookStruct();
                 Marshal.PtrToStructure(lParam, MyMouseHookStruct);
                 Console.WriteLine(MyMouseHookStruct.pt.x + ", " + MyMouseHookStruct.pt.y);
@@ -133,6 +148,9 @@ class ZorxConsoleBox
         }
         return CallNextHookEx(_hookID, nCode, wParam, lParam);
     }
+
+    [DllImport("user32.dll", SetLastError = true)]
+    static extern bool GetWindowRect(IntPtr hwnd, out RECT lpRect);
 
     [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
     private static extern IntPtr SetWindowsHookEx(int idHook,
