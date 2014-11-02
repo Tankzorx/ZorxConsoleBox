@@ -32,6 +32,7 @@ class ZorxConsoleBox
         public int dwExtraInfo;
     }
 
+    // Struct for keeping wow client coordinates.
     [StructLayout(LayoutKind.Sequential)]
     public struct RECT
     {
@@ -119,14 +120,19 @@ class ZorxConsoleBox
     {
         if (nCode >= 0)
         {
-            if (WM_LBUTTONDOWN == (int)wParam)
+            if (WM_LBUTTONDOWN == (int)wParam || WM_LBUTTONUP == (int) wParam)
             {
                 RECT myRECT;
                 GetWindowRect(pidList[0].MainWindowHandle,out myRECT);
-                Console.WriteLine(myRECT.left);
+                //Console.WriteLine(myRECT.left);
                 MouseHookStruct MyMouseHookStruct = new MouseHookStruct();
                 Marshal.PtrToStructure(lParam, MyMouseHookStruct);
                 Console.WriteLine(MyMouseHookStruct.pt.x + ", " + MyMouseHookStruct.pt.y);
+                foreach (Process item in pidList)
+                {
+                    Console.WriteLine("Was here");
+                    //SendMessage(item.MainWindowHandle,(int)wParam,(int)nCode,lParam);
+                }
         
             }
 
@@ -148,6 +154,9 @@ class ZorxConsoleBox
         }
         return CallNextHookEx(_hookID, nCode, wParam, lParam);
     }
+
+    [DllImport("user32.dll")]
+    public static extern bool PostMessage(IntPtr WindowHandle, int Msg, IntPtr wParam, IntPtr lParam);
 
     [DllImport("user32.dll", SetLastError = true)]
     static extern bool GetWindowRect(IntPtr hwnd, out RECT lpRect);
